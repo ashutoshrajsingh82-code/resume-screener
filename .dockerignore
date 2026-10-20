@@ -1,0 +1,45 @@
+
+# Git
+.git
+.gitignore
+
+# Python virtual environments
+.venv
+venv
+env
+
+# Node.js dependencies
+node_modules
+
+# Build outputs
+dist
+build
+
+# Python cache and test artifacts
+__pycache__
+*.py[cod]
+.pytest_cache
+.coverage
+htmlcov
+
+# Documentation and tests
+docs
+tests
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+
+# OS and editor files
+.DS_Store
+.vscode
+.idea
+
+# Docker
+.dockerignore
+Dockerfile
+docker-compose.yml
