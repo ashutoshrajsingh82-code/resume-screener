@@ -1,345 +1,689 @@
 <!DOCTYPE html>
+
 <html lang="en">
+
 <head>
+
     <meta charset="UTF-8">
+
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#f7f8fa">
+
+    <meta name="theme-color" content="#f5f4f0">
+
     <meta name="description" content="Screen resumes against a job description and compare explainable candidate matches.">
+
     <link rel="icon" href="data:,">
+
     <title>Resume Screen | Talent Research</title>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+
     <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.26.4/babel.min.js"></script>
+
     <script src="upload_workflow.js"></script>
+
     <link rel="stylesheet" href="style.css">
+
 </head>
+
 <body>
+
     <div id="root"></div>
+
     <script type="text/babel">
+
         const { useState, useEffect, useRef, useReducer } = React;
+
         const UploadWorkflow = window.ResumeUploadWorkflow;
-        const API_BASE = (new URLSearchParams(window.location.search).get('api') || 'http://127.0.0.1:8000').replace(/\/$/, '');
+
+        const API_BASE = (new URLSearchParams(window.location.search).get('api') || 'http://127.0.0.1:8001').replace(/\/$/, '');
+
         const SAMPLE_JD = `Backend Software Engineer
+
+
 
 We are looking for a backend engineer to build and maintain the services behind our product.
 
+
+
 Requirements:
+
 - Strong Python experience, including Flask or FastAPI
+
 - Designing and building REST APIs
+
 - Experience with SQL databases (PostgreSQL preferred)
+
 - Deploying on AWS or GCP using Docker
+
 - Comfortable with Git and CI/CD pipelines
+
 - Writing unit tests`;
 
+
+
         const extensionOf = (name) => name.split('.').pop().toLowerCase();
+
         const pct = UploadWorkflow.formatScorePercent;
 
+
+
         function formatApiError(detail, status) {
+
             if (typeof detail === 'string') return detail;
+
             if (Array.isArray(detail)) return detail.map((item) => `${(item.loc || []).slice(1).join('.') || 'request'}: ${item.msg}`).join('\n');
+
             return `The server returned an error (HTTP ${status}).`;
+
         }
+
+
 
         function BackendStatus({ status }) {
+
             const labels = { checking: 'Checking connection', online: 'Screening model ready', loading: 'Model is starting', offline: 'Backend unavailable' };
+
             return <span className={`backend-status ${status}`} role="status" aria-live="polite"><span className="status-dot" aria-hidden="true"></span>{labels[status]}</span>;
+
         }
+
+
 
         function FileRow({ item, onRemove, disabled, maxBytes }) {
+
             const { file, status } = item;
+
             const currentErrors = UploadWorkflow.validateResumeFile(file, maxBytes);
+
             const displayStatus = currentErrors.length ? 'invalid' : status;
+
             const extension = extensionOf(file.name).toUpperCase();
+
             const labels = { ready: 'Ready', reading: 'Uploading', screened: 'Screened', unreadable: 'Unreadable', invalid: 'Needs attention', failed: 'Failed' };
+
             return (
+
                 <li className={`file-row ${currentErrors.length ? 'file-invalid' : ''}`}>
+
                     <span className={`file-type ${extension}`} aria-hidden="true">{extension}</span>
+
                     <div className="file-info">
+
                         <span className="file-name" title={file.name}>{file.name}</span>
+
                         <span className="file-meta">{extension} · {UploadWorkflow.fileSizeLabel(file.size)}</span>
+
                         {currentErrors.map((message) => <span className="file-error" key={message}>{message}</span>)}
+
                     </div>
+
                     <span className={`file-state ${displayStatus}`} aria-live="polite">{labels[displayStatus] || 'Ready'}</span>
+
                     <button className="icon-button remove-button" type="button" onClick={onRemove} disabled={disabled} aria-label={`Remove ${file.name}`} title={`Remove ${file.name}`}>×</button>
+
                 </li>
+
             );
+
         }
+
+
 
         function SkillList({ skills, kind }) {
+
             const label = kind === 'matched' ? 'Detected in extracted text' : kind === 'implied' ? 'Counted by a configured skill relation' : 'Potentially missing (not detected)';
+
             const emptyMessage = kind === 'matched' ? 'No recognized skills detected' : kind === 'implied' ? 'No implied skills counted' : 'No potentially missing recognized skills';
+
             return <div className={`skill-group ${kind}`}><span className="skill-label">{label}</span>
+
                 {skills.length ? <div className="skill-chips">{skills.map((skill) => <span className="skill-chip" key={skill}>{skill}</span>)}</div> : <span className="muted small">{emptyMessage}</span>}
+
             </div>;
+
         }
+
+
 
         function CandidateResult({ item, hasSkills, selected, onToggle, compareDisabled, tieCount }) {
+
             const skillCount = item.matched_skills.length + item.missing_skills.length;
+
             const explicitMatched = item.explicit_matched_skills || item.matched_skills;
+
             const impliedMatched = item.implied_matched_skills || [];
+
             return (
+
                 <article className="candidate-row">
+
                     <div className="candidate-main">
+
                         <label className="compare-check"><input type="checkbox" checked={selected} disabled={!selected && compareDisabled} onChange={onToggle} aria-label={`Compare ${item.filename}`} /><span>Compare</span></label>
+
                         <span className="rank-number" aria-label={`Rank ${item.rank}`}>#{String(item.rank).padStart(2, '0')}{tieCount > 1 && <small className="tie-label">Tie</small>}</span>
+
                         <div className="candidate-identity"><h3 title={item.filename}>{item.filename}</h3><span>{hasSkills ? `${item.matched_skills.length} of ${skillCount} recognized skills` : 'Meaning based match'}</span></div>
+
                         <div className="score-block"><strong>{pct(item.score)}</strong><span>Match score</span></div>
+
                     </div>
+
                     <div className="candidate-metrics">
+
                         <div className="metric-line"><span>Meaning similarity</span><div className="meter" role="img" aria-label={`Meaning similarity ${pct(item.semantic_score)}`}><span style={{ width: pct(item.semantic_score) }}></span></div><strong>{pct(item.semantic_score)}</strong></div>
+
                         {hasSkills && item.skill_score !== null && <div className="metric-line"><span>Skill evidence</span><div className="meter skills" role="img" aria-label={`Skill evidence score ${pct(item.skill_score)}`}><span style={{ width: pct(item.skill_score) }}></span></div><strong>{pct(item.skill_score)}</strong></div>}
+
                     </div>
+
                     <details className="candidate-explanation"><summary>Why this match <span>{hasSkills ? `${explicitMatched.length} detected · ${impliedMatched.length} implied · ${item.missing_skills.length} potentially missing` : 'Meaning comparison'}</span></summary>
+
                         <div className="explanation-copy"><p><strong>Meaning similarity</strong> is a calibrated, model-inferred comparison between the job description and resume text. It is not a hiring probability or performance guarantee.</p>
+
                             {hasSkills ? <><p><strong>Skill evidence</strong> comes from recognized terms detected in the extracted resume text. A potentially missing skill means no matching text was detected; it does not establish that the candidate lacks that skill.</p><div className="skill-evidence"><SkillList skills={explicitMatched} kind="matched" />{impliedMatched.length > 0 && <SkillList skills={impliedMatched} kind="implied" />}<SkillList skills={item.missing_skills} kind="missing" /></div></> : <p>No skills from the configured vocabulary were recognized in the job description, so the backend used meaning similarity alone.</p>}
+
                         </div>
+
                     </details>
+
                 </article>
+
             );
+
         }
 
+
+
         function App() {
+
             const [jdText, setJdText] = useState('');
+
             const [files, setFiles] = useState([]);
+
             const [screening, dispatchScreening] = useReducer(UploadWorkflow.screeningReducer, UploadWorkflow.initialScreeningState);
+
             const { results, isLoading, error } = screening;
+
             const [notices, setNotices] = useState([]);
+
             const [semanticWeight, setSemanticWeight] = useState(0.6);
+
             const [appliedWeight, setAppliedWeight] = useState(0.6);
+
             const [weightPending, setWeightPending] = useState(false);
+
             const [backend, setBackend] = useState('checking');
+
             const [maxUploadBytes, setMaxUploadBytes] = useState(UploadWorkflow.DEFAULT_MAX_FILE_BYTES);
+
             const [dragActive, setDragActive] = useState(false);
+
             const [selectedRanks, setSelectedRanks] = useState([]);
+
             const [sortBy, setSortBy] = useState('rank');
+
             const [actionAnnouncement, setActionAnnouncement] = useState('');
+
             const inputRef = useRef(null);
+
             const processingRef = useRef(false);
+
             const weightTimerRef = useRef(null);
+
             const pendingWeightRef = useRef(semanticWeight);
 
+
+
             const checkBackend = async () => {
+
                 setBackend('checking');
+
                 try {
+
                     const response = await fetch(`${API_BASE}/health`);
+
                     if (!response.ok) throw new Error('Health check failed');
+
                     const health = await response.json();
+
                     if (Number.isSafeInteger(health.max_upload_bytes) && health.max_upload_bytes > 0) setMaxUploadBytes(health.max_upload_bytes);
+
                     setBackend(health.model_loaded ? 'online' : 'loading');
+
                 } catch (_) { setBackend('offline'); }
+
             };
+
             useEffect(() => { checkBackend(); }, []);
 
+
+
             const resetForInputChange = (nextFiles = files) => {
+
                 if (weightTimerRef.current) window.clearTimeout(weightTimerRef.current);
+
                 weightTimerRef.current = null;
+
                 setWeightPending(false);
+
                 setActionAnnouncement('');
+
                 dispatchScreening({
+
                     type: 'inputs-changed',
+
                     selected: nextFiles.length,
+
                     invalid: nextFiles.filter((item) => item.errors.length > 0).length,
+
                 });
+
             };
+
+
 
             const addFiles = (incoming) => {
+
                 const updated = UploadWorkflow.addResumeFiles(files, incoming, maxUploadBytes);
+
                 if (updated.added) {
+
                     setFiles(updated.items);
+
                     resetForInputChange(updated.items);
+
                     setSelectedRanks([]);
+
                     setActionAnnouncement(`${updated.added} resume${updated.added === 1 ? '' : 's'} added. ${updated.items.length} selected.`);
+
                 }
+
                 const messages = [...updated.errors];
+
                 if (updated.duplicates) messages.push(`${updated.duplicates} duplicate file${updated.duplicates === 1 ? ' was' : 's were'} already selected.`);
+
                 setNotices(messages);
+
             };
+
+
 
             const removeFile = (id) => {
+
                 const updated = UploadWorkflow.removeResumeFile(files, id);
+
                 setFiles(updated);
+
                 resetForInputChange(updated);
+
                 setSelectedRanks([]);
+
                 setActionAnnouncement(`Resume removed. ${updated.length} selected.`);
+
             };
+
+
 
             const clearSession = () => {
+
                 if (isLoading) return;
+
                 if (!window.confirm('Clear the job description, selected resumes, results, and matching settings from this page? This only clears this browser tab; it does not delete data from server or operating-system memory.')) return;
+
                 if (weightTimerRef.current) window.clearTimeout(weightTimerRef.current);
+
                 weightTimerRef.current = null;
+
                 if (inputRef.current) inputRef.current.value = '';
+
                 setJdText(''); setFiles([]); setNotices([]); setSelectedRanks([]); setSortBy('rank');
+
                 setSemanticWeight(0.6); setAppliedWeight(0.6); pendingWeightRef.current = 0.6;
+
                 setWeightPending(false);
+
                 dispatchScreening({ type: 'inputs-changed', selected: 0, invalid: 0 });
+
                 setActionAnnouncement('Screening session cleared from this page.');
+
             };
 
+
+
             const runScreening = async (weightToUse = semanticWeight) => {
+
                 if (weightTimerRef.current) window.clearTimeout(weightTimerRef.current);
+
                 weightTimerRef.current = null;
+
                 if (processingRef.current || !UploadWorkflow.canSubmit(jdText, files, backend === 'online', isLoading, maxUploadBytes)) {
+
                     setWeightPending(false);
+
                     return;
+
                 }
+
                 processingRef.current = true;
+
                 setActionAnnouncement(`Screening ${files.filter((item) => UploadWorkflow.validateResumeFile(item.file, maxUploadBytes).length === 0).length} eligible resume${files.length === 1 ? '' : 's'}. Progress is indeterminate.`);
+
                 const eligible = files.filter((item) => UploadWorkflow.validateResumeFile(item.file, maxUploadBytes).length === 0);
+
                 dispatchScreening({ type: 'start', selected: files.length, invalid: files.length - eligible.length });
+
                 setFiles(files.map((item) => {
+
                     const errors = UploadWorkflow.validateResumeFile(item.file, maxUploadBytes);
+
                     return { ...item, errors, status: errors.length ? 'invalid' : 'reading' };
+
                 }));
+
                 setSelectedRanks([]); setNotices([]);
+
                 const controller = new AbortController();
+
                 const timeoutId = window.setTimeout(() => controller.abort(), 120000);
+
                 try {
+
                     const form = new FormData();
+
                     form.append('jd_text', jdText);
+
                     form.append('semantic_weight', String(weightToUse));
+
                     eligible.forEach((item) => form.append('resumes', item.file, item.file.name));
+
                     const response = await fetch(`${API_BASE}/rank`, { method: 'POST', body: form, signal: controller.signal });
+
                     let body = null;
+
                     try { body = await response.json(); } catch (_) {}
+
                     if (!response.ok) {
+
                         if (response.status === 503) setBackend('loading');
+
                         throw new Error(formatApiError(body && body.detail, response.status));
+
                     }
+
                     if (!body || !Array.isArray(body.ranked_resumes) || !Array.isArray(body.skipped) || body.ranked_resumes.some((item) => !Number.isFinite(item.score) || !Number.isFinite(item.semantic_score) || (item.skill_score !== null && !Number.isFinite(item.skill_score)))) throw new Error('The backend sent a response this page does not understand.');
+
                     setBackend('online');
+
                     const successNames = new Set(body.ranked_resumes.map((item) => item.filename));
+
                     const failedNames = new Set(body.skipped.map((item) => item.filename));
+
                     const updatedFiles = files.map((item) => ({
+
                         ...item,
+
                         status: UploadWorkflow.validateResumeFile(item.file, maxUploadBytes).length ? 'invalid' : successNames.has(item.file.name) ? 'screened' : failedNames.has(item.file.name) ? 'unreadable' : 'failed',
+
                     }));
+
                     setFiles(updatedFiles);
+
                     dispatchScreening({ type: 'success', results: body, selected: files.length, successful: body.ranked_resumes.length });
+
                     setAppliedWeight(weightToUse);
+
                     setWeightPending(false);
+
                     setActionAnnouncement(`Screening complete. ${body.ranked_resumes.length} successfully screened; ${body.skipped.length + files.length - eligible.length} failed or invalid.`);
+
                 } catch (cause) {
+
                     let message;
+
                     if (cause && cause.name === 'AbortError') message = 'The screening request timed out after 2 minutes. Check the backend connection and try again.';
+
                     else if (cause instanceof TypeError) { setBackend('offline'); message = 'Could not reach the screening service. Check that the FastAPI backend is running and available, then try again.'; }
+
                     else message = cause instanceof Error ? cause.message : 'Screening failed. Please try again.';
+
                     setFiles(files.map((item) => {
+
                         const errors = UploadWorkflow.validateResumeFile(item.file, maxUploadBytes);
+
                         return { ...item, errors, status: errors.length ? 'invalid' : 'failed' };
+
                     }));
+
                     dispatchScreening({ type: 'failure', selected: files.length, error: message });
+
                     setWeightPending(false);
+
                     setActionAnnouncement(`Screening failed. ${message}`);
+
                 } finally { window.clearTimeout(timeoutId); processingRef.current = false; }
+
             };
+
+
 
             const handleRank = (event) => { event.preventDefault(); runScreening(); };
 
+
+
             const onDrop = (event) => { event.preventDefault(); setDragActive(false); if (!isLoading) addFiles(event.dataTransfer.files); };
+
             const toggleCompare = (rank) => setSelectedRanks((previous) => {
+
                 const selected = previous.includes(rank);
+
                 const next = selected ? previous.filter((value) => value !== rank) : previous.length < 3 ? [...previous, rank] : previous;
+
                 const candidate = results?.ranked_resumes.find((item) => item.rank === rank);
+
                 setActionAnnouncement(`${candidate?.filename || 'Candidate'} ${selected ? 'removed from' : 'added to'} comparison. ${next.length} selected.`);
+
                 return next;
+
             });
+
             const hasSkills = Boolean(results && results.jd_skills.length);
+
             const selectedCandidates = results ? results.ranked_resumes.filter((item) => selectedRanks.includes(item.rank)) : [];
+
             const displayedCandidates = results ? UploadWorkflow.sortRankedResumes(results.ranked_resumes, sortBy) : [];
+
             const scoreCounts = new Map();
+
             if (results) results.ranked_resumes.forEach((item) => scoreCounts.set(item.score, (scoreCounts.get(item.score) || 0) + 1));
+
             const canScreen = UploadWorkflow.canSubmit(jdText, files, backend === 'online', isLoading, maxUploadBytes);
+
             const invalidCount = files.filter((item) => UploadWorkflow.validateResumeFile(item.file, maxUploadBytes).length > 0).length;
 
+
+
             return (
+
                 <div className="app-shell">
+
                     <header className="topbar">
+
                         <a className="brand" href="#top"><span className="brand-mark" aria-hidden="true">RS</span><span>Talent Research <small>RESUME SCREEN</small></span></a>
+
                         <nav className="main-nav" aria-label="Main navigation"><a href="#screening">Screening</a><a href="#results">Results</a></nav>
+
                         <div className="connection"><BackendStatus status={backend} /><button className="text-button" type="button" onClick={checkBackend} disabled={backend === 'checking'}>Check connection</button></div>
+
                     </header>
 
+
+
                     <main id="top">
+
                         <section className="page-intro" aria-labelledby="page-title">
+
                             <div><p className="eyebrow">CANDIDATE REVIEW WORKSPACE</p><h1 id="page-title">Resume screening</h1><p className="intro-copy">Compare submitted resumes with the role requirements. Review the evidence before making a decision.</p></div>
+
                             <a className="guide-link" href="#results">How results work <span aria-hidden="true">↘</span></a>
+
                         </section>
+
+
 
                         <details className="privacy-note" id="privacy-details">
+
                             <summary>Privacy and responsible use</summary>
+
                             <div className="privacy-copy">
+
                                 <p><strong>What is processed:</strong> When you run screening, this browser sends the selected file bytes and job description to the FastAPI service configured for this page (localhost by default). The service extracts PDF, DOCX, or TXT text and calculates embeddings and match scores in the backend process. Candidate filenames are included in results. The upload request sends resume content to the configured API, not the React/Babel asset URLs. Those third-party scripts still execute in this page's context, so self-host them for deployments that require tighter supply-chain control.</p>
+
                                 <p><strong>Retention:</strong> The backend does not write resumes or extracted text to an application database or log. It processes them in request memory; multipart uploads may be temporarily spooled by the framework to the server's temporary storage and the form is closed after processing. The browser keeps selected files, text, and results in this tab's memory until cleared or the page is closed. No browser storage is used. Clearing this session removes data from the page, but is not a promise of secure erasure from RAM or operating-system temporary storage. Hosting or proxy infrastructure may have its own logs or retention settings.</p>
+
                                 <p><strong>Use:</strong> This prototype assists human review; it must not make autonomous hiring decisions. It has no explicit protected-characteristic fields or scoring rules, but labeled-field filtering is incomplete and semantic similarity may still be influenced by sensitive information present in ordinary text. Bias and fairness have not been empirically evaluated. Review the source documents and results; do not use it to decide based on protected characteristics.</p>
+
                             </div>
+
                         </details>
 
+
+
                         <form onSubmit={handleRank}>
+
                             <section id="screening" className="workflow" aria-label="Screening inputs">
+
                                 <section className="panel job-panel" aria-labelledby="job-heading">
+
                                     <div className="section-heading"><span className="step-number" aria-hidden="true">01</span><div><h2 id="job-heading">Job description</h2><p>Step 1 of 3 · Define the role and its requirements.</p></div><button type="button" className="text-button sample-button" onClick={() => { setJdText(SAMPLE_JD); resetForInputChange(); setSelectedRanks([]); setActionAnnouncement('Example job description loaded. Edit it to match the role you are reviewing.'); }}>Use example role</button></div>
+
                                     <label className="sr-only" htmlFor="jd">Job description text</label>
+
                                     <textarea id="jd" value={jdText} onChange={(event) => { setJdText(event.target.value); resetForInputChange(); setSelectedRanks([]); }} placeholder="Example: Backend engineer responsible for Python services, REST APIs, and SQL databases…" aria-describedby="jd-hint" disabled={isLoading}></textarea>
+
                                     <div className="field-footer"><span id="jd-hint">Include responsibilities and required qualifications.</span><span>{jdText.length.toLocaleString()} characters</span></div>
+
                                 </section>
+
+
 
                                 <section className="panel files-panel" aria-labelledby="files-heading">
+
                                     <div className="section-heading"><span className="step-number" aria-hidden="true">02</span><div><h2 id="files-heading">Candidate resumes</h2><p>Step 2 of 3 · PDF, DOCX, or TXT · Up to {UploadWorkflow.fileSizeLabel(maxUploadBytes)} per file</p></div></div>
+
                                     <p className="upload-privacy-hint">Selected files and the job description are sent to the configured screening backend only when you run screening. See <a href="#privacy-details" onClick={() => document.getElementById('privacy-details')?.setAttribute('open', '')}>privacy details</a>.</p>
+
                                     <label className={`dropzone ${dragActive ? 'drag-active' : ''} ${isLoading ? 'is-disabled' : ''}`} onDragOver={(event) => { event.preventDefault(); setDragActive(true); }} onDragLeave={() => setDragActive(false)} onDrop={onDrop}>
+
                                         <span className="upload-icon" aria-hidden="true">↑</span><span className="drop-title">Choose files or drop them here</span><span className="drop-subtitle">PDF, DOCX, or TXT · Multiple files supported</span>
+
                                         <input ref={inputRef} className="sr-only file-input" id="resume-files" type="file" multiple accept=".pdf,.docx,.txt" disabled={isLoading} onChange={(event) => { addFiles(event.target.files); event.target.value = ''; }} />
+
                                     </label>
+
                                     <div className="file-list-heading"><span id="selected-files-heading">Selected resumes <span className="count-pill">{files.length}</span></span>{files.length > 0 && <button type="button" className="text-button" onClick={() => { if (window.confirm(`Remove all ${files.length} selected resumes?`)) { setFiles([]); resetForInputChange([]); setSelectedRanks([]); setNotices([]); setActionAnnouncement('All selected resumes removed.'); } }} disabled={isLoading}>Clear all resumes</button>}</div>
+
                                     {files.length === 0 ? <p className="empty-files">No resumes added yet.</p> : <ul className="file-list" aria-label="Selected resume files">{files.map((item) => <FileRow key={item.id} item={item} maxBytes={maxUploadBytes} disabled={isLoading} onRemove={() => removeFile(item.id)} />)}</ul>}
+
                                     <div className="file-summary" aria-live="polite"><div><strong>{files.length}</strong><span>Selected</span></div><div><strong>{screening.successful}</strong><span>Successfully screened</span></div><div><strong>{screening.failed}</strong><span>Failed / invalid</span></div></div>
+
                                 </section>
+
                             </section>
+
+
 
                             <section className="panel configuration" aria-labelledby="config-heading">
+
                                 <div className="section-heading compact-heading"><span className="step-number" aria-hidden="true">03</span><div><h2 id="config-heading">Matching configuration</h2><p>Step 3 of 3 · Set how the two matching signals contribute to the final ranking.</p></div></div>
+
                                 <div className="weight-control"><div className="weight-labels"><span>Recognized skill evidence <strong>{pct(1 - semanticWeight)}</strong></span><span>Meaning similarity <strong>{pct(semanticWeight)}</strong></span></div><input id="weight" type="range" min="0" max="1" step="0.05" value={semanticWeight} onChange={(event) => {
+
                                     const nextWeight = parseFloat(event.target.value);
+
                                     setSemanticWeight(nextWeight); pendingWeightRef.current = nextWeight; setSelectedRanks([]);
+
                                     if (results) {
+
                                         setWeightPending(true);
+
                                         if (weightTimerRef.current) window.clearTimeout(weightTimerRef.current);
+
                                         weightTimerRef.current = window.setTimeout(() => { weightTimerRef.current = null; runScreening(pendingWeightRef.current); }, 350);
+
                                     } else resetForInputChange();
+
                                 }} disabled={isLoading} aria-label="Meaning similarity weight" aria-describedby="weight-help" aria-valuetext={`${pct(semanticWeight)} meaning similarity and ${pct(1 - semanticWeight)} recognized skill evidence`} /><div className="range-caption"><span>Skills only · 0%</span><span>Equal · 50%</span><span>Meaning only · 100%</span></div>
+
                                     <p className="weight-formula" id="weight-help">Current blend: {pct(semanticWeight)} meaning similarity + {pct(1 - semanticWeight)} recognized skill evidence. Use arrow keys to change by 5%. {hasSkills ? 'When results are available, the backend re-runs screening after you stop adjusting.' : 'If the job description has no recognized skills, the backend uses meaning similarity alone.'}</p>
+
                                     <details className="criteria-details"><summary>How ranking works</summary><p>The backend compares the meaning of each resume with the job description, then checks for terms in its curated skills vocabulary. The meaning signal is calibrated from the model’s semantic coverage comparison. The match score blends the returned signals using the percentages above; it is not a hiring probability or guarantee of future performance.</p><p>Skill terms are detected in extracted text. Some explicitly detected terms count toward related skills through configured relations such as PostgreSQL counting toward SQL; those are labeled separately. A potentially missing term means no matching evidence was found; it does not prove the candidate lacks that skill.</p><p>Scores are displayed to two decimal places from the backend response. Candidates with the same returned match score are marked as tied; tie labels do not change their backend order. A human reviewer remains responsible for the decision.</p></details>
+
                                 </div>
+
                             </section>
 
+
+
                             <div className="action-bar"><div className="action-hint">{!jdText.trim() ? 'Add a job description to continue.' : !files.length ? 'Add at least one resume to continue.' : files.length === invalidCount ? 'Fix or remove the files that need attention.' : backend !== 'online' ? 'Screening is available when the backend model is ready.' : isLoading ? 'Uploading and screening. Progress is indeterminate.' : results ? 'Results use the current backend scores. Adjusting weights recalculates them.' : 'Valid resumes are ready for screening.'}</div><button className="text-button clear-session" type="button" onClick={clearSession} disabled={isLoading || (!jdText && !files.length && !results && !error)}>Clear screening session</button><button className="primary-action" type="submit" disabled={!canScreen} aria-busy={isLoading}>{isLoading && <span className="spinner" aria-hidden="true"></span>}{isLoading ? 'Uploading and screening…' : results ? 'Recalculate ranking' : 'Run screening'}<span aria-hidden="true">→</span></button></div>
+
                             <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">{actionAnnouncement}</div>
+
                         </form>
 
+
+
                         <section id="results" className="results-section" aria-labelledby="results-heading">
+
                             <div className="results-header"><div><p className="eyebrow">CANDIDATE REVIEW</p><h2 id="results-heading">Screening results</h2><p>Match scores are model-generated comparison signals, not hiring probabilities or guarantees of job performance. A human reviewer makes the final decision.</p></div>{results && <div className="results-tools"><label htmlFor="result-sort">Sort by <select id="result-sort" value={sortBy} onChange={(event) => { setSortBy(event.target.value); setActionAnnouncement(`Results sorted by ${event.target.selectedOptions[0].text}. Scores were not changed.`); }}><option value="rank">Backend rank</option><option value="score">Match score</option><option value="semantic">Meaning similarity</option>{hasSkills && <option value="skill">Skill evidence</option>}<option value="filename">Filename</option></select></label><span className="results-count">{results.ranked_resumes.length} ranked</span></div>}</div>
+
                             {error && <div className="message error-message" role="alert"><strong>Screening could not be completed.</strong><span>{error}</span></div>}
+
                             {weightPending && <div className="message notice-message" role="status" aria-live="polite">Recalculating with the selected weighting. Progress is indeterminate.</div>}
+
                             {results && appliedWeight !== semanticWeight && <div className="message notice-message" role="status">These results use {pct(appliedWeight)} meaning similarity and {pct(1 - appliedWeight)} skill evidence. Recalculate to apply the current weighting.</div>}
+
                             {notices.length > 0 && <div className="message notice-message" role="status">{notices.map((notice, index) => <p key={index}>{notice}</p>)}</div>}
+
                             {results && results.skipped.length > 0 && <div className="message notice-message" role="status">{results.skipped.map((item) => <p key={item.filename}>{item.filename}: {item.reason}</p>)}</div>}
+
                             {results ? <>
+
                                 <div className={`success-banner ${screening.failed ? 'has-issues' : ''}`} role="status"><span className="success-icon" aria-hidden="true">✓</span><span><strong>{screening.successful ? (screening.failed ? 'Screening completed with issues' : 'Screening complete') : 'No resumes were successfully screened'}</strong><small>{screening.successful} successfully screened · {screening.failed} failed · {screening.selected} selected</small></span></div>
+
                                 {!hasSkills && <div className="message notice-message" role="status">No recognized skills were found in the job description. Results use meaning match only.</div>}
+
                                 {results.ranked_resumes.length === 0 ? <div className="empty-state"><h3>No resumes could be ranked</h3><p>Check the files and try screening again.</p></div> : <>
+
                                     <div className="comparison-note">Select up to three candidates to compare their returned scores side by side. Review each candidate’s skill evidence below.</div>
+
                                     <div className="candidate-list">{displayedCandidates.map((item) => <CandidateResult key={`${item.rank}-${item.filename}`} item={item} hasSkills={hasSkills} selected={selectedRanks.includes(item.rank)} onToggle={() => toggleCompare(item.rank)} compareDisabled={selectedRanks.length >= 3} tieCount={scoreCounts.get(item.score) || 1} />)}</div>
+
                                     {selectedCandidates.length > 0 && <section className="compare-panel" aria-labelledby="compare-heading"><div className="compare-header"><div><h3 id="compare-heading">Candidate comparison</h3><p aria-live="polite">{selectedCandidates.length === 1 ? 'Select one more candidate to compare.' : `${selectedCandidates.length} candidates selected`}</p></div><button className="text-button" type="button" onClick={() => { setSelectedRanks([]); setActionAnnouncement('Candidate comparison cleared.'); }}>Clear comparison</button></div><div className="compare-grid" style={{ '--candidate-count': selectedCandidates.length }}>{selectedCandidates.map((item) => <article className="compare-candidate" key={item.rank}><span className="compare-rank">Rank {item.rank}</span><h4 title={item.filename}>{item.filename}</h4><div className="compare-score"><span>Match score</span><strong>{pct(item.score)}</strong></div><div className="compare-score"><span>Meaning similarity</span><strong>{pct(item.semantic_score)}</strong></div>{hasSkills && <div className="compare-score"><span>Skill evidence</span><strong>{item.skill_score === null ? 'N/A' : pct(item.skill_score)}</strong></div>}<p className="compare-skills">{hasSkills ? `${item.explicit_matched_skills?.length ?? item.matched_skills.length} detected · ${item.implied_matched_skills?.length ?? 0} implied · ${item.missing_skills.length} potentially missing` : 'Meaning only'}</p></article>)}</div></section>}
+
                                 </>}
+
                             </> : !error && !isLoading && <div className="empty-state"><span className="empty-state-icon" aria-hidden="true">⌕</span><h3>Results will appear here</h3><p>Enter a role, add resumes, then run screening to review candidate matches.</p></div>}
+
                         </section>
+
                     </main>
+
                     <footer className="footer-note"><span>Resume Screen · Research prototype</span><span>Use rankings as decision support. A person should make the final assessment.</span></footer>
+
                 </div>
+
             );
+
         }
+
         ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+
     </script>
+
 </body>
+
 </html>
