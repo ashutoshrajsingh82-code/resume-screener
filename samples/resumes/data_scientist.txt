@@ -1,0 +1,10 @@
+Meera Iyer - Data Scientist
+Summary: Data scientist building predictive models for retail demand.
+
+Experience
+Data Scientist, RetailIQ (2021 - present)
+- Trained forecasting models with scikit-learn and PyTorch; reduced forecast error by 18%.
+- Cleaned and analysed large datasets with pandas, NumPy and SQL.
+- Presented findings to non-technical stakeholders in weekly reviews.
+
+Skills: Python, pandas, NumPy, scikit-learn, PyTorch, SQL, machine learning, Git

@@ -1,0 +1,10 @@
+Ananya Rao - Frontend Developer
+Summary: Frontend developer focused on accessible, fast user interfaces.
+
+Experience
+Frontend Developer, Pixelcraft (2021 - present)
+- Built dashboards in React and TypeScript with reusable component libraries.
+- Styled interfaces with Tailwind CSS; improved Lighthouse performance scores above 90.
+- Wrote component tests with Jest and consumed REST APIs built by the backend team.
+
+Skills: JavaScript, TypeScript, React, Next.js, HTML, CSS, Tailwind, Jest, Git

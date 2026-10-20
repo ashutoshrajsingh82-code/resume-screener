@@ -1,0 +1,12 @@
+SYNTHETIC PROFILE A — SAMPLE RESUME
+
+Profile: Backend software developer with experience building web services.
+
+Projects and experience:
+- Implemented REST APIs using Python and FastAPI.
+- Used PostgreSQL and SQL for application data and query design.
+- Added automated tests and participated in code review using Git.
+- Maintained CI/CD workflows and containerized services with Docker.
+- Deployed a small service to AWS and documented operational decisions.
+
+This fictional sample contains no real contact information or employment history.

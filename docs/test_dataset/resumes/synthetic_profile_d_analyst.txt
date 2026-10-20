@@ -1,0 +1,11 @@
+SYNTHETIC PROFILE D — SAMPLE RESUME
+
+Profile: Data analysis project contributor.
+
+Projects and experience:
+- Used SQL to prepare and check project datasets.
+- Wrote Python scripts for repeatable data cleaning.
+- Created charts and concise reports for non-specialist audiences.
+- Documented assumptions and checked source data quality.
+
+This fictional sample is provided for trying the separate sample analyst job description.

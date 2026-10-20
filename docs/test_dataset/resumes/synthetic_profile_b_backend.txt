@@ -1,0 +1,11 @@
+SYNTHETIC PROFILE B — SAMPLE RESUME
+
+Profile: Software developer with experience contributing to web products.
+
+Projects and experience:
+- Built application features in Python and worked with relational data.
+- Wrote unit tests for several project components.
+- Collaborated through Git-based code review.
+- Helped diagnose defects and documented changes for teammates.
+
+This fictional sample intentionally describes only some of the technologies and activities in the sample job description. It is not a judgment about a real candidate.

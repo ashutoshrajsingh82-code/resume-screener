@@ -1,0 +1,3 @@
+Synthetic job description — Backend Engineer
+
+The team is seeking a backend engineer to build and maintain reliable web services. Work includes designing REST APIs with Python and FastAPI, writing automated tests, working with PostgreSQL and SQL, using Git and CI/CD, and deploying containerized services with Docker to AWS. Candidates should be able to investigate production issues and communicate implementation trade-offs.

@@ -1,0 +1,11 @@
+Priya Nair - Backend Engineer
+Summary: Backend engineer with 4 years of experience building APIs and data services.
+
+Experience
+Software Engineer, Finlytics (2022 - present)
+- Built and maintained REST APIs in Python (FastAPI and Flask) serving 2M requests per day.
+- Designed PostgreSQL schemas, wrote optimised SQL, and cut report query times by 60%.
+- Containerised services with Docker and deployed them to AWS (ECS, RDS, S3).
+- Set up CI/CD with GitHub Actions; wrote unit tests with pytest, raising coverage to 85%.
+
+Skills: Python, FastAPI, Flask, PostgreSQL, SQL, Docker, AWS, Git, CI/CD, pytest, Redis

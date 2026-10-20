@@ -1,0 +1,10 @@
+Rahul Verma - Software Developer
+Summary: Developer with 2 years of experience in web applications.
+
+Experience
+Software Developer, ShopNest (2023 - present)
+- Developed features for an e-commerce platform using Django and Django REST Framework.
+- Wrote MySQL queries and migrations; fixed slow pages by adding indexes.
+- Used Git for version control and took part in code reviews.
+
+Skills: Python, Django, MySQL, REST APIs, Git, HTML, CSS

@@ -1,0 +1,11 @@
+Backend Software Engineer
+
+We are looking for a backend engineer to build and maintain the services behind our product.
+
+Requirements:
+- Strong Python experience, including Flask or FastAPI
+- Designing and building REST APIs
+- Experience with SQL databases (PostgreSQL preferred)
+- Deploying on AWS or GCP using Docker
+- Comfortable with Git and CI/CD pipelines
+- Writing unit tests
